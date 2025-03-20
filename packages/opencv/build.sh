@@ -8,23 +8,15 @@ cd /opt
 
 git clone --branch ${OPENCV_VERSION} --recursive https://github.com/opencv/opencv
 git clone --branch ${OPENCV_VERSION} --recursive https://github.com/opencv/opencv_contrib
-git clone --branch ${OPENCV_PYTHON} --recursive https://github.com/opencv/opencv-python
 
-cd /opt/opencv-python/opencv
-git checkout --recurse-submodules ${OPENCV_VERSION}
+cd /opt/opencv
+git checkout --recurse-submodules "${OPENCV_VERSION}"
 cat modules/core/include/opencv2/core/version.hpp
 
-cd ../opencv_contrib
-git checkout --recurse-submodules ${OPENCV_VERSION}
+cd /opt/opencv_contrib
+git checkout --recurse-submodules "${OPENCV_VERSION}"
 
-cd ../opencv_extra
-git checkout --recurse-submodules ${OPENCV_VERSION}
-
-cd ../
-
-# apply patches to setup.py
-git apply /tmp/opencv/patches.diff || echo "failed to apply git patches"
-git diff
+cd /opt
 
 # OpenCV looks for the cuDNN version in cudnn_version.h, but it's been renamed to cudnn_version_v8.h
 ln -s /usr/include/$(uname -i)-linux-gnu/cudnn_version_v*.h /usr/include/$(uname -i)-linux-gnu/cudnn_version.h
@@ -39,9 +31,6 @@ function patch_opencv()
 }
 
 patch_opencv
-cd /opt
-patch_opencv
-cd /opt/opencv-python
    
 export ENABLE_CONTRIB=1
 export CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
@@ -49,7 +38,7 @@ export OPENCV_BUILD_ARGS="\
    -DCPACK_BINARY_DEB=ON \
    -DBUILD_EXAMPLES=OFF \
    -DBUILD_opencv_python2=OFF \
-   -DBUILD_opencv_python3=ON \
+   -DBUILD_opencv_python3=OFF \
    -DBUILD_opencv_java=OFF \
    -DCMAKE_BUILD_TYPE=RELEASE \
    -DCMAKE_INSTALL_PREFIX=/usr/local \
@@ -77,20 +66,6 @@ export OPENCV_BUILD_ARGS="\
    -DBUILD_TIFF=ON \
    -DBUILD_PERF_TESTS=OFF \
    -DBUILD_TESTS=OFF"
-
-export CMAKE_ARGS="${OPENCV_BUILD_ARGS} -DOPENCV_EXTRA_MODULES_PATH=/opt/opencv-python/opencv_contrib/modules"
-
-pip3 wheel --wheel-dir=/opt --verbose .
-
-ls /opt
-cd /
-rm -rf /opt/opencv-python
-
-pip3 install /opt/opencv*.whl
-python3 -c "import cv2; print('OpenCV version:', str(cv2.__version__)); print(cv2.getBuildInformation())"
-twine upload --verbose /opt/opencv*.whl || echo "failed to upload wheel to ${TWINE_REPOSITORY_URL}"
-
-unset CMAKE_ARGS
 
 mkdir /opt/opencv/build
 cd /opt/opencv/build
